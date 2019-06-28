@@ -1,0 +1,103 @@
+#Next we want to prepare the data for the bias adjusted analysis. More detials of this analysis can be found here: https://research-information.bristol.ac.uk/files/68467160/322_2354_2_PB.pdf
+
+#The actual analysis you will run will depend on the number of trajectories you have (we have 5 in this case so have to create a matrix of 5x5 different estimates with class probabilties)
+
+#In this analysis, we will assume that we now have gotten the class probability data open in stata (but can be done in R, python etc...). This will have a number of columns with the depression data for each column, along with the subject identifier, and then the individual level intercept, slope or quadratic + group/class I,S,Q estimates, and then the class probabilties (5 here because we have 5 trajectories) and the final class identifier (whether the individual is in class 1 through 5). 
+
+#I have called theose last 6 columns cprob1, cprob2, cprob3, cprob4, cprob5 and class to represent the individuals probability of being in each class and then the final class identifier (1 to 5). First, we call the class trajectory something like c_mfq (mood and feelings) and then we change the catgories so we have the worse groups with the lowest numbers (for some reason).
+
+rename class c_mfq
+recode c_mfq 1=4 2=1 3=5 4=2 5=3
+
+#You might also want to recode the variable here so 1 here is the early child onset and 5 is the stable low for example.
+
+*Now change the individual class posterior probabiltiies to match the new class labels
+
+rename cprob1 cp4 
+rename cprob2 cp1
+rename cprob3 cp5
+rename cprob4 cp2
+rename cprob5 cp3
+
+#Here is where it gets a bit complex as we now dervie a matix of probabilities for each class. Basically we are deriving a matrix of probabilities which we will then feed back into Mplus which will take into account the uncertainty (probability) of an individual being put into one of these trajectories. 
+
+* Create the D matrix for modal assignment
+**********************************************
+
+* determine distribution for X based on the fact we have 5 trajectories (change to 4 if you have 4 trajectories etc...
+**********************************************************************************************************************
+matrix dist_x = [1 \ 1 \ 1 \ 1 \ 1]
+forvalues t = 1/5 {
+	qui total cp`t'
+	matrix dist_x[`t', 1] = e(b)
+	}
+matrix list dist_x
+
+* determine constituents of numerator
+******************************************
+forvalues class = 1/5 {
+	gen prob_w_is`class'_given_y = cond(c_mfq==`class',1,0)
+	gen prob_x_is`class'_given_y = cp`class'
+	}
+
+* calculate quantity for each subject
+******************************************
+forvalues t=1/5 {
+	forvalues s = 1/5 {
+	gen temp_w`s'_x`t' = (prob_x_is`t'_given_y)*(prob_w_is`s'_given_y)
+	}
+	}
+	
+* derive D by summing across subjects
+* for D matrix, rows correspond to X and columns to W
+********************************************************
+matrix D = [1,2,3,4,5\1,2,3,4,5\1,2,3,4,5\1,2,3,4,5\1,2,3,4,5]
+forvalues t=1/5 {
+	forvalues s = 1/5 {
+	qui total temp_w`s'_x`t'
+	matrix D[`t',`s'] = e(b)/dist_x[`t',1]
+	}
+	}
+matrix list D
+
+/* these are the estimates that **WE** get in our analysis for the D matrix
+D[5,5]
+
+           c1         c2         c3         c4         c5
+r1  .66056339  .07466415  .13721427  .05962338  .06793482
+r2  .00925914  .48547397  .04730733  .01244116   .4455184
+r3  .03764927   .0393426  .58446316  .03292112  .30562384
+r4  .03025643   .0230028  .08060046  .60379497  .26234533
+r5  .00015334  .01103957  .01333303  .00609089  .96938317
+*/
+
+	
+***************************************************************************************
+* logit constraints for modal assignment for estimates that we now plug back into Mplus
+***************************************************************************************
+local mat_dim = 5
+matrix logit_modal = [1,2,3,4,5\1,2,3,4,5\1,2,3,4,5\1,2,3,4,5\1,2,3,4,5]
+forvalues x=1/`mat_dim' {
+	forvalues y = 1/`mat_dim' {
+	matrix logit_modal[`y',`x'] = D[`y',`x']/D[`y',`mat_dim']
+	matrix logit_modal[`y',`x'] = ln(logit_modal[`y',`x'])
+	}
+	}
+matrix list logit_modal
+
+/* these are the estimates that we can now plug into Mplus when running the analysis with classes as we now have some modal assignments which take the uncertainty into account. Notice there are no estimates for class 5 as this is the baseline category used in our analysis.
+
+logit_modal[5,5]
+
+            c1          c2          c3          c4          c5
+r1   2.2745444   .09445139   .70299501   -.1305009           0
+r2  -3.8736274   .08588711  -2.2425734  -3.5782278           0
+r3  -2.0940414  -2.0500472   .64833869  -2.2282405           0
+r4   -2.159953  -2.4340455  -1.1801573   .83357299           0
+r5  -8.7517579  -4.4751738  -4.2864156  -5.0698664           0
+
+*/
+
+drop prob_w_is1_given_y -temp_w5_x5
+
+#We will now add these into our analysis with trajectories are prior risk factors in the next section
