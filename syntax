@@ -1,0 +1,72 @@
+#This is the syntax we used to estimate 5 trajectories of depression symptoms in ALSPAC (but any cohort could be used providing you have repeat measures of a trait, with the timing of assessment).
+
+#Data were in wide format (e.g., subject | depression score). This was created in stata, but could be impoted in MPlus as a .txt or .csv file. It should look something like this:
+
+subject    dep11     dep13    dep14    ETC...  (NOTE: YOU DO NOT HAVE TO IMPORT THE HEADERS - THEY CAN BE SPECIFIED IN MPLUS)
+
+1          4        8        10        ....
+2          0        11       2         ....
+3          -999     -999     4         ....
+4          11       9        10        ....
+5          5        10       6         ....
+
+#We set missing data to be -999 (or whatever you wanted to call it). We then ran the following syntax in MPlus
+
+TITLE: Growth Mixture Model;
+DATA: FILE IS GMM_5_Data.csv;
+
+VARIABLE:
+NAMES ARE subject dep11 dep13 dep14 dep17 dep18 dep19 dep22 dep23 dep24;
+USEVARIABLES ARE dep11 dep13 dep14 dep17 dep18 dep19 dep22 dep23 dep24;
+AUXILIARY subject; 
+MISSING = all(-999);
+  classes = c(5);
+
+Analysis: 
+    processors = 4 (starts);
+    type = mixture;
+    starts =3500 350;
+    !stiterations = 25;
+    !stscale = 25;
+
+MODEL:
+    %overall%
+    i by dep11@1 dep13@1 dep14@1 dep17@1 dep18@1 dep19@1 dep22@1 dep23@1 dep24@1;
+    s by dep11@0 dep13@0.215 dep14@0.315 dep17@0.605 dep18@0.715 dep19@0.805 
+    dep22@1.125 dep23@1.225 dep24@1.315;
+    q by dep11@0 dep13@0.046 dep14@0.099 dep17@0.366 dep18@0.511 dep19@0.648 
+    dep22@1.266 dep23@1.501 dep24@1.729;
+    [dep11@0 dep13@0 dep14@0 dep17@0 dep18@0 dep19@0 dep22@0 dep23@0 dep24@0];
+    dep11 dep13 dep14 dep17 dep18 dep19 dep22 dep23 dep24 (eqresvar);
+    [i s q];
+    i@0 s q;
+    i with s@0;
+    i with q@0;
+    s with q;
+    
+  %c#1% 
+  [i s q]; 
+ 
+  %c#2% 
+  [i s q]; 
+
+  %c#3% 
+  [i s q]; 
+
+  %c#4% 
+  [i s q];
+
+  %c#5% 
+  [i s q];
+
+OUTPUT: tech1 tech4;
+
+PLOT: type is plot3;
+  series = dep11 dep13 dep14 dep17 dep18 dep19 dep22 dep23 dep24 (s);
+
+Savedata: file is 5_class_probs.txt;
+   save = cprobabilities;
+   
+#This will create a new file called "5_class_probs.txt" which will have all of previous data (e.g., subject | depression score) but now some additional data such as the estimate/variances for intercept, slope and quadratic scores for each person and also have all the posterior probabilities (what is the probability that the individual will be classified into a particular trajectory). Importantly you will also get a new column at the end which MPlus has derived to identofy which class (or group/trajectory) the individual shold belong in. This is your main DV now if the trajetcories is your outcome or IV if trajectories are your exposure.
+
+#You could then import this file into stata, R, python or SPSS (etc), merge it with some other risk factors/outcomes for some analysis by merging on the subject variable. However, simple analysis like this does not take into account the uncertainty of the trajectories classification, which can lead to bias, so it is recommneded that you use a 3 step bias adjusted approach (https://research-information.bristol.ac.uk/files/68467160/322_2354_2_PB.pdf). I will explore this in a later file.
