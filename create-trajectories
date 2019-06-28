@@ -1,6 +1,6 @@
 #This is the syntax we used to estimate 5 trajectories of depression symptoms in ALSPAC (but any cohort could be used providing you have repeat measures of a trait, with the timing of assessment).
 
-#Data were in wide format (e.g., subject | depression score). This was created in stata, but could be impoted in MPlus as a .txt or .csv file. It should look something like this:
+#Data were in wide format (e.g., subject | depression score). This was created in stata, but could be impoted in Mplus as a .txt or .csv file. It should look something like this:
 
 subject    dep11     dep13    dep14    ETC...  (NOTE: YOU DO NOT HAVE TO IMPORT THE HEADERS - THEY CAN BE SPECIFIED IN MPLUS)
 
@@ -10,7 +10,7 @@ subject    dep11     dep13    dep14    ETC...  (NOTE: YOU DO NOT HAVE TO IMPORT 
 4          11       9        10        ....
 5          5        10       6         ....
 
-#We set missing data to be -999 (or whatever you wanted to call it). We then ran the following syntax in MPlus
+#We set missing data to be -999 (or whatever you wanted to call it). We then ran the following syntax in Mplus
 
 TITLE: Growth Mixture Model;
 DATA: FILE IS GMM_5_Data.csv;
@@ -28,6 +28,8 @@ Analysis:
     starts =3500 350;
     !stiterations = 25;
     !stscale = 25;
+
+#We estimated quadratic trajectories after several comparisons. q shows the differnce in months, not years.
 
 MODEL:
     %overall%
