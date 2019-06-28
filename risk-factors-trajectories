@@ -1,0 +1,100 @@
+#Here is the final part of the code that combines the previous 2 files to show how the 3 step bias adjusted analysis is run to explore the association between early risk factors and trajectories of depression symptoms. 
+
+#In the first file (create-trajectories) we created 5 trajectories and exported them as a .txt file with the class probabilities and the class identifier.
+
+#In the second file (modal-estimates) we estimated these probabilties for use in later analysis.
+
+#In this final part, we will now run the association between risk factors and the trajectories whilst also considering a 3-step bias adjusted approach.
+
+#You will need to merge your risk factors into your dataset which has the class identifier (called c_mfq in the previous file; but is essentially a number between 1 and 5 which classifies an individual into one of the trajectories/classes). Once you have a file with the classes identifier and the risk factors, you're good to go (I also used the stata2mplus command to get the data from stata to mplus, which saves a lot of time).
+
+Title: 
+  Stata2Mplus conversion for GMM_5class.dta
+  List of variables converted shown below
+
+#This is just a little refresher for me so I know I have the modal estimates here to add into the analysis later on
+
+logit_modal[5,5]
+
+            c1          c2          c3          c4          c5
+r1   2.2745444   .09445139   .70299501   -.1305009           0
+r2  -3.8736274   .08588711  -2.2425734  -3.5782278           0
+r3  -2.0940414  -2.0500472   .64833869  -2.2282405           0
+r4   -2.159953  -2.4340455  -1.1801573   .83357299           0
+r5  -8.7517579  -4.4751738  -4.2864156  -5.0698664           0
+
+Data:
+  File is GMM_5class.dat ;
+Variable:
+  Names are 
+     subject c_mfq i s q c_i c_s c_q cprob1 cprob2 cprob3 cprob4 cprob5
+     aln AGE_M MENARCHE_GROUP_COMP DS_k_5e01_std
+     female mat_edu mat_sclass parity smokepreg
+     epds_post_b bulliedf10 pcruelty2_4 anx;
+  Missing are all (-999) ; 
+
+#Note this is just the unadjusted model so I have not included any confounders here
+
+  usevariables= c_mfq female DS_k_5e01_std epds_post_b 
+  pcruelty2_4 anx bulliedf10;
+  nominal= c_mfq;
+  classes=x(5);
+
+  Analysis:
+  proc=4(starts);
+  starts = 1000 100;
+  type = mixture;
+
+  Model:
+  %overall%
+
+  x#1 on female (lorc1v5_a);
+  x#2 on female (lorc2v5_a);
+  x#3 on female(lorc3v5_a);
+  x#4 on female(lorc4v5_a);
+  x#1 on DS_k_5e01_std (lorc1v5_b);
+  x#2 on DS_k_5e01_std (lorc2v5_b);
+  x#3 on DS_k_5e01_std (lorc3v5_b);
+  x#4 on DS_k_5e01_std (lorc4v5_b);
+  x#1 on epds_post_b (lorc1v5_z);
+  x#2 on epds_post_b (lorc2v5_z);
+  x#3 on epds_post_b (lorc3v5_z);
+  x#4 on epds_post_b (lorc4v5_z);
+  x#1 on pcruelty2_4 (lorc1v5_d);
+  x#2 on pcruelty2_4 (lorc2v5_d);
+  x#3 on pcruelty2_4 (lorc3v5_d);
+  x#4 on pcruelty2_4 (lorc4v5_d);
+  x#1 on anx (lorc1v5_e);
+  x#2 on anx (lorc2v5_e);
+  x#3 on anx (lorc3v5_e);
+  x#4 on anx (lorc4v5_e);
+  x#1 on bulliedf10 (lorc1v5_f);
+  x#2 on bulliedf10 (lorc2v5_f);
+  x#3 on bulliedf10 (lorc3v5_f);
+  x#4 on bulliedf10 (lorc4v5_f);
+
+#So this is the really cool part, we now include the modal estimates into the multinomial logistic regression which captures the uncertainty of the class distribution into the analysis. Note, we have literally just copied the matrix estimates into the trajectories.
+
+%x#1%
+[c_mfq#1@2.2745444 c_mfq#2@.09445139 c_mfq#3@.70299501 c_mfq#4@-.1305009];
+
+%x#2%
+[c_mfq#1@-3.8736274 c_mfq#2@.08588711 c_mfq#3@-2.2425734 c_mfq#4@-3.5782278];
+
+%x#3%
+[c_mfq#1@-2.0940414 c_mfq#2@-2.0500472 c_mfq#3@.64833869 c_mfq#4@-2.2282405];
+
+%x#4%
+[c_mfq#1@-2.159953 c_mfq#2@-2.4340455 c_mfq#3@-1.1801573 c_mfq#4@.83357299];
+
+%x#5%
+[c_mfq#1@-8.7517579 c_mfq#2@-4.4751738 c_mfq#3@-4.2864156 c_mfq#4@-5.0698664];
+
+model test:
+
+lorc1v5_e = 0;
+lorc2v5_e = 0;
+lorc3v5_e = 0;
+lorc4v5_e = 0;
+
+#And that will be it. This will give you estimates for associations between exposures and trajectories. Enjoy :D
