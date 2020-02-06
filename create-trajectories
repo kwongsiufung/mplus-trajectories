@@ -41,10 +41,10 @@ MODEL:
     [dep11@0 dep13@0 dep14@0 dep17@0 dep18@0 dep19@0 dep22@0 dep23@0 dep24@0];
     dep11 dep13 dep14 dep17 dep18 dep19 dep22 dep23 dep24 (eqresvar);
     [i s q];
-    i@0 s q;
-    i with s@0;
+    i s q@0;
+    i with s;
     i with q@0;
-    s with q;
+    s with q@0;
     
   %c#1% 
   [i s q]; 
